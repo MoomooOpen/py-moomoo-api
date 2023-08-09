@@ -1,0 +1,10 @@
+include README.md
+recursive-include moomoo *.md
+recursive-include moomoo *.url
+recursive-include moomoo *.json
+recursive-include moomoo *.bat
+recursive-include moomoo *.csv
+
+include requirements.txt
+include moomoo/VERSION.txt
+recursive-include doc_maker *
