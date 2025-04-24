@@ -3,8 +3,7 @@
     Market quote and trade context setting
 """
 from moomoo import *
-from moomoo.common.constant import *
-from moomoo.common.utils import *
+from ..common.utils import *
 
 
 class SimpleFilter(object):
@@ -398,7 +397,7 @@ class FilterStockData(object):
         self.stock_code = None
         self.stock_name = None
 
-        from moomoo.common.pb.Qot_StockFilter_pb2 import StockData
+        from ..common.pb.Qot_StockFilter_pb2 import StockData
         self.stock_code = merge_qot_mkt_stock_str(rsp_item.security.market, rsp_item.security.code)
         #  名称 type = string
         self.stock_name = rsp_item.name

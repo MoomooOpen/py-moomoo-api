@@ -2,9 +2,8 @@
 """
     Market quote and trade context setting
 """
-from moomoo import *
-from moomoo.common.conn_mng import *
-from moomoo.common.utils import *
+
+from ..common.utils import *
 
 class Request(object):
 
@@ -45,7 +44,7 @@ class Request(object):
         self.price_recovery_ratio_max = None  # 正股距回收价 % 过滤终点, 仅牛熊证支持该字段过滤
 
     def fill_request_pb(self):
-        from moomoo.common.pb.Qot_GetWarrant_pb2 import Request as GetWarrantPBRequest
+        from ..common.pb.Qot_GetWarrant_pb2 import Request as GetWarrantPBRequest
         pb = GetWarrantPBRequest()
         pb.c2s.begin = self.begin
         pb.c2s.num = self.num
@@ -195,7 +194,7 @@ class Response(object):
 
     @staticmethod
     def unpack_response_pb(resp):
-        from moomoo.common.pb.Qot_GetWarrant_pb2 import Response as GetWarrantPBResponse
+        from ..common.pb.Qot_GetWarrant_pb2 import Response as GetWarrantPBResponse
         if resp is None or not isinstance(resp, GetWarrantPBResponse):
             return RET_ERROR, "unpack_response_pb error", None
         if resp.retType != RET_OK:

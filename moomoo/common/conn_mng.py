@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from moomoo.common import bytes_utf8, IS_PY2
-from moomoo.common.utils import *
-from moomoo.common.constant import *
-from moomoo.common.sys_config import SysConfig
+from . import bytes_utf8, IS_PY2
+from .utils import *
+from .constant import *
+from .sys_config import SysConfig
 from Crypto.Cipher import AES
-from moomoo.common.constant import *
 import struct
 
 

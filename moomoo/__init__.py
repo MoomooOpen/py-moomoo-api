@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2023 moomoo, Inc.
+# Copyright 2024 moomoo, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,26 +97,25 @@ _check_module('selectors2', py_version=2)
 
 
 #import data querying APIs and response handle base class
-from moomoo.quote.open_quote_context import OpenQuoteContext
-from moomoo.quote.quote_response_handler import *
-from moomoo.trade.trade_response_handler import *
-from moomoo.quote.quote_get_warrant import Request as WarrantRequest
+from .quote.open_quote_context import OpenQuoteContext
+from .quote.quote_response_handler import *
+from .trade.trade_response_handler import *
+from .quote.quote_get_warrant import Request as WarrantRequest
 
 #import HK and US trade context
-from moomoo.trade.open_trade_context import OpenHKTradeContext
-from moomoo.trade.open_trade_context import OpenUSTradeContext
-from moomoo.trade.open_trade_context import OpenHKCCTradeContext
-from moomoo.trade.open_trade_context import OpenCNTradeContext
-from moomoo.trade.open_trade_context import OpenFutureTradeContext
-from moomoo.trade.open_trade_context import OpenSecTradeContext
+from .trade.open_trade_context import OpenHKTradeContext
+from .trade.open_trade_context import OpenUSTradeContext
+from .trade.open_trade_context import OpenHKCCTradeContext
+from .trade.open_trade_context import OpenCNTradeContext
+from .trade.open_trade_context import OpenFutureTradeContext
+from .trade.open_trade_context import OpenSecTradeContext
 
 #import constant values
-from moomoo.common import *
-from moomoo.common.constant import *
-from moomoo.common.sys_config import SysConfig
-from moomoo.common.diag import print_sys_info
-from moomoo.common.err import Err
-from moomoo.quote.quote_get_warrant import Request as WarrantRequest
+from .common import *
+from .common.constant import *
+from .common.sys_config import SysConfig
+from .common.err import Err
+from .quote.quote_get_warrant import Request as WarrantRequest
 
 with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'VERSION.txt'), 'rb') as f:
     __version__ = f.read().decode('ascii').strip()

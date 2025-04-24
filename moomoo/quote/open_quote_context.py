@@ -7,16 +7,16 @@ import datetime
 import math
 from collections import OrderedDict
 import pandas as pd
-from moomoo.common.open_context_base import OpenContextBase, ContextStatus
-from moomoo.quote.quote_query import *
-from moomoo.quote.quote_stockfilter_info import *
-from moomoo.quote.quote_get_warrant import *
+from ..common.open_context_base import OpenContextBase, ContextStatus
+from .quote_query import *
+from .quote_stockfilter_info import *
+from .quote_get_warrant import *
 
 class SubRecord:
     def __init__(self):
         self.subMap = {}  # (subkey, is_orderbook_detail, extended_time) => code set
 
-    def sub(self, code_list, subtype_list, is_orderbook_detail, extended_time):
+    def sub(self, code_list, subtype_list, is_orderbook_detail, extended_time, session):
         not_is_orderbook_detail = not is_orderbook_detail
         not_extended_time = not extended_time
         for subtype in subtype_list:
@@ -140,11 +140,11 @@ class OpenQuoteContext(OpenContextBase):
 
         ret_code = RET_OK
         ret_msg = ''
-        for code_list, subtype_list, is_detailed_orderbook, extended_time in sub_list:
+        for code_list, subtype_list, is_detailed_orderbook, extended_time, session in sub_list:
             ret_code, ret_msg = self._reconnect_subscribe(
-                code_list, subtype_list, is_detailed_orderbook, extended_time)
-            logger.debug("reconnect subscribe code_count={} ret_code={} ret_msg={} subtype_list={} code_list={} is_detailed_orderbook={} extended_time={}".format(
-                len(code_list), ret_code, ret_msg, subtype_list, code_list, is_detailed_orderbook, extended_time))
+                code_list, subtype_list, is_detailed_orderbook, extended_time, session)
+            logger.debug("reconnect subscribe code_count={} ret_code={} ret_msg={} subtype_list={} code_list={} is_detailed_orderbook={} extended_time={} session={}".format(
+                len(code_list), ret_code, ret_msg, subtype_list, code_list, is_detailed_orderbook, extended_time, session))
             if ret_code != RET_OK:
                 break
 
@@ -210,8 +210,8 @@ class OpenQuoteContext(OpenContextBase):
         """
         获取指定市场中特定类型的股票基本信息
         注：当 market 和 code_list 同时存在时，会忽略 market，仅对 code_list 进行查询。
-        :param market: 市场类型，moomoo.common.constant.Market
-        :param stock_type: 股票类型， moomoo.common.constant.SecurityType
+        :param market: 市场类型，futu.common.constant.Market
+        :param stock_type: 股票类型， futu.common.constant.SecurityType
         :param code_list: 如果不为None，应该是股票code的iterable类型，将只返回指定的股票信息
         :return: (ret_code, content)
                 ret_code 等于RET_OK时， content为Pandas.DataFrame数据, 否则为错误原因字符串, 数据列格式如下
@@ -297,7 +297,8 @@ class OpenQuoteContext(OpenContextBase):
                               fields=[KL_FIELD.ALL],
                               max_count=1000,
                               page_req_key=None,
-                              extended_time=False):
+                              extended_time=False,
+                              session = Session.NONE):
         """
         拉取历史k线，不需要先下载历史数据。
 
@@ -394,7 +395,8 @@ class OpenQuoteContext(OpenContextBase):
                 "max_num": max_kl_num,
                 "conn_id": self.get_sync_conn_id(),
                 "next_req_key": page_req_key,
-                "extended_time": extended_time
+                "extended_time": extended_time,
+                "session":session
             }
             query_processor = self._get_sync_query_processor(RequestHistoryKlineQuery.pack_req,
                                                              RequestHistoryKlineQuery.unpack_rsp)
@@ -721,6 +723,7 @@ class OpenQuoteContext(OpenContextBase):
 
         col_dict.update((row[0], 1) for row in pb_field_map_PreAfterMarketData_pre)
         col_dict.update((row[0], 1) for row in pb_field_map_PreAfterMarketData_after)
+        col_dict.update((row[0], 1) for row in pb_field_map_PreAfterMarketData_overnight)
 
         snapshot_frame_table = pd.DataFrame(snapshot_list, columns=col_dict.keys())
 
@@ -978,7 +981,7 @@ class OpenQuoteContext(OpenContextBase):
 
         return RET_OK, "", code_list, subtype_list
 
-    def subscribe(self, code_list, subtype_list, is_first_push=True, subscribe_push=True, is_detailed_orderbook=False, extended_time=False):
+    def subscribe(self, code_list, subtype_list, is_first_push=True, subscribe_push=True, is_detailed_orderbook=False, extended_time=False, session=Session.NONE):
         """
         订阅注册需要的实时信息，指定股票和订阅的数据类型即可
 
@@ -990,6 +993,7 @@ class OpenQuoteContext(OpenContextBase):
         :param subscribe_push: 订阅后推送
         :param is_detailed_orderbook 是否订阅详细的摆盘订单明细，仅用于 SF 行情权限下订阅 ORDER_BOOK 类型
         :param extended_time - 是否允许美股盘前盘后数据（仅用于订阅美股实时K线、实时分时、实时逐笔），False不允许，True允许
+        :param session - 是否允许美股盘前盘后数据（仅用于订阅美股实时K线、实时分时、实时逐笔）,参见Session
         :return: (ret, err_message)
 
                 ret == RET_OK err_message为None
@@ -1004,9 +1008,9 @@ class OpenQuoteContext(OpenContextBase):
         print(quote_ctx.subscribe(['HK.00700'], [SubType.QUOTE)])
         quote_ctx.close()
         """
-        return self._subscribe_impl(code_list, subtype_list, is_first_push, subscribe_push, is_detailed_orderbook, extended_time)
+        return self._subscribe_impl(code_list, subtype_list, is_first_push, subscribe_push, is_detailed_orderbook, extended_time, session)
 
-    def _subscribe_impl(self, code_list, subtype_list, is_first_push, subscribe_push=True, is_detailed_orderbook=False, extended_time=False):
+    def _subscribe_impl(self, code_list, subtype_list, is_first_push, subscribe_push=True, is_detailed_orderbook=False, extended_time=False, session=Session.NONE):
 
         ret, msg, code_list, subtype_list = self._check_subscribe_param(
             code_list, subtype_list)
@@ -1031,7 +1035,8 @@ class OpenQuoteContext(OpenContextBase):
             'is_first_push': is_first_push,
             'subscribe_push': subscribe_push,
             'is_detailed_orderbook': is_detailed_orderbook,
-            'extended_time': extended_time
+            'extended_time': extended_time,
+            'session': session
         }
         ret_code, msg, _ = query_processor(**kargs)
 
@@ -1039,7 +1044,7 @@ class OpenQuoteContext(OpenContextBase):
             return RET_ERROR, msg
 
         with self._lock:
-            self._sub_record.sub(code_list, subtype_list, is_detailed_orderbook, extended_time)
+            self._sub_record.sub(code_list, subtype_list, is_detailed_orderbook, extended_time, session)
         #
         # ret_code, msg, push_req_str = SubscriptionQuery.pack_push_req(
         #     code_list, subtype_list, self.get_async_conn_id(), is_first_push)
@@ -1053,7 +1058,7 @@ class OpenQuoteContext(OpenContextBase):
 
         return RET_OK, None
 
-    def _reconnect_subscribe(self, code_list, subtype_list, is_detailed_orderbook, extended_time):
+    def _reconnect_subscribe(self, code_list, subtype_list, is_detailed_orderbook, extended_time, session):
 
         # 将k线定阅和其它定阅区分开来
         kline_sub_list = []
@@ -1090,7 +1095,7 @@ class OpenQuoteContext(OpenContextBase):
                 start_idx += sub_count
 
                 ret_code, ret_data = self._subscribe_impl(
-                    sub_codes, sub_list, True, True, is_detailed_orderbook, extended_time)
+                    sub_codes, sub_list, True, True, is_detailed_orderbook, extended_time, session)
                 if ret_code != RET_OK:
                     break
             if ret_code != RET_OK:
@@ -1305,6 +1310,7 @@ class OpenQuoteContext(OpenContextBase):
 
         col_list.extend(row[0] for row in pb_field_map_PreAfterMarketData_pre)
         col_list.extend(row[0] for row in pb_field_map_PreAfterMarketData_after)
+        col_list.extend(row[0] for row in pb_field_map_PreAfterMarketData_overnight)
 
         quote_frame_table = pd.DataFrame(quote_list, columns=col_list)
 
@@ -1365,7 +1371,7 @@ class OpenQuoteContext(OpenContextBase):
 
         return RET_OK, ticker_frame_table
 
-    def get_cur_kline(self, code, num, ktype=SubType.K_DAY, autype=AuType.QFQ):
+    def get_cur_kline(self, code, num, ktype=KLType.K_DAY, autype=AuType.QFQ):
         """
         实时获取指定股票最近num个K线数据，最多1000根
 
@@ -1547,7 +1553,7 @@ class OpenQuoteContext(OpenContextBase):
                 code                    str            证券代码
                 plate_code              str            板块代码
                 plate_name              str            板块名字
-                plate_type              str            板块类型（行业板块或概念板块），moomoo.common.constant.Plate
+                plate_type              str            板块类型（行业板块或概念板块），futu.common.constant.Plate
                 =====================   ===========   ==============================================================
         """
         if is_str(code_list):
@@ -1675,8 +1681,8 @@ class OpenQuoteContext(OpenContextBase):
                  str            None          end为start往后30天
                  None           None          start为当前日期，end往后30天
                 ==========    ==========    ========================================
-        :param option_type: 期权类型,默认全部，全部/看涨/看跌，moomoo.common.constant.OptionType
-        :param option_cond_type: 默认全部，全部/价内/价外，moomoo.common.constant.OptionCondType
+        :param option_type: 期权类型,默认全部，全部/看涨/看跌，futu.common.constant.OptionType
+        :param option_cond_type: 默认全部，全部/价内/价外，futu.common.constant.OptionCondType
         :param data_filter: 数据筛选条件，默认不筛选，参考OptionDataFilter,
                 OptionDataFilter字段如下：
                 ============================    ==========    ========================================
@@ -1721,6 +1727,9 @@ class OpenQuoteContext(OpenContextBase):
                 suspension           bool          是否停牌(True表示停牌)
                 stock_id             int           股票id
                 index_option_type    str           指数期权类型
+                expiration_cycle     str           交割周期类型
+                option_standard_type str           期权标准类型
+                option_settlement_mode str         结算方式
                 ==================   ===========   ==============================================================
 
         """
@@ -1769,9 +1778,10 @@ class OpenQuoteContext(OpenContextBase):
             return ret_code, msg
 
         col_list = [
-            'code', 'name', 'lot_size', 'stock_type',
-            'option_type', 'stock_owner', 'strike_time', 'strike_price', 'suspension',
-            'stock_id', 'index_option_type'
+            'code', 'name', 'lot_size', 'stock_type', 'option_type', 
+            'stock_owner', 'strike_time', 'strike_price', 'suspension',
+            'stock_id', 'index_option_type', 'expiration_cycle', 
+            'option_standard_type', 'option_settlement_mode'
         ]
 
         option_chain = pd.DataFrame(option_chain_list, columns=col_list)
@@ -1785,7 +1795,7 @@ class OpenQuoteContext(OpenContextBase):
     def get_warrant(self, stock_owner='', req=None):
         """
         :param stock_owner:所属正股
-        :param req:moomoo.quote.quote_get_warrant.Request
+        :param req:futu.quote.quote_get_warrant.Request
         """
 
 
@@ -2014,8 +2024,8 @@ class OpenQuoteContext(OpenContextBase):
 
     def verification(self, verification_type=VerificationType.NONE, verification_op=VerificationOp.NONE, code=""):
         """图形验证码下载之后会将其存至固定路径，请到该路径下查看验证码
-        Windows平台：%appdata%/com.futunn.FutuOpenD/F3CNN/PicVerifyCode.png
-        非Windows平台：~/.com.futunn.FutuOpenD/F3CNN/PicVerifyCode.png
+        Windows平台：%appdata%/com.moomoo.OpenD/F3CNN/PicVerifyCode.png
+        非Windows平台：~/.com.moomoo.OpenD/F3CNN/PicVerifyCode.png
         注意：只有最后一次请求验证码会生效，重复请求只有最后一次的验证码有效"""
 
         """required int32 type = 1; //验证码类型, VerificationType
@@ -2381,7 +2391,8 @@ class OpenQuoteContext(OpenContextBase):
             ret_frame = pd.DataFrame(ret, columns=col_list)
             return RET_OK, ret_frame
 
-    def set_price_reminder(self, code, op, key=None, reminder_type=None, reminder_freq=None, value=None, note=None):
+    def set_price_reminder(self, code, op, key=None, reminder_type=None, reminder_freq=None, value=None, note=None,
+                           reminder_session_list = [PriceReminderMarketStatus.OPEN, PriceReminderMarketStatus.US_PRE, PriceReminderMarketStatus.US_AFTER]):
         """
          新增、删除、修改、启用、禁用 某只股票的到价提醒，每只股票每种类型最多可设置10个提醒
          注意：
@@ -2399,6 +2410,7 @@ class OpenQuoteContext(OpenContextBase):
         :param reminder_freq: PriceReminderFreq，到价提醒的频率，删除、启用、禁用的情况下会忽略该入参
         :param value: float，提醒值，删除、启用、禁用的情况下会忽略该入参
         :param note: str，用户设置的备注，删除、启用、禁用的情况下会忽略该入参
+        :param reminder_session_list: list[PriceReminderMarketStatus]，到价提醒的时段列表，删除、启用、禁用的情况下会忽略该入参
         :return: (ret, data)
         ret != RET_OK 返回错误字符串
         ret == RET_OK data为key
@@ -2423,6 +2435,16 @@ class OpenQuoteContext(OpenContextBase):
             if r is False:
                 error_str = ERROR_STR_PREFIX + "the type of param in reminder_freq is wrong"
                 return RET_ERROR, error_str
+            
+        _tmp_reminder_session_list = []
+        for _reminder_session in reminder_session_list:
+            if _reminder_session is PriceReminderMarketStatus.NONE:
+                continue
+            _tmp_reminder_session_list.append(_reminder_session)
+
+        # 如果没有传入reminder_session_list，则设置默认值
+        if len(_tmp_reminder_session_list) == 0:
+            _tmp_reminder_session_list = [PriceReminderMarketStatus.OPEN, PriceReminderMarketStatus.US_PRE, PriceReminderMarketStatus.US_AFTER]
 
         query_processor = self._get_sync_query_processor(
             SetPriceReminderQuery.pack_req,
@@ -2437,7 +2459,8 @@ class OpenQuoteContext(OpenContextBase):
             "reminder_freq": reminder_freq,
             "value": value,
             "note": note,
-            "conn_id": self.get_sync_conn_id()
+            "conn_id": self.get_sync_conn_id(),
+            "reminder_session_list": _tmp_reminder_session_list
         }
         ret_code, msg, key = query_processor(**kargs)
         if ret_code == RET_ERROR:
@@ -2463,6 +2486,7 @@ class OpenQuoteContext(OpenContextBase):
         value                       float                提醒值
         enable                      bool                 是否启用
         note                        string               备注，最多10个字符
+        reminder_session_list       list                 提醒时段，枚举参考PriceReminderMarketStatus
         =========================   ==================   =========================
         """
         if code is not None and is_str(code) is False:
@@ -2500,6 +2524,7 @@ class OpenQuoteContext(OpenContextBase):
                 'value',
                 'enable',
                 'note',
+                'reminder_session_list'
             ]
             ret_frame = pd.DataFrame(ret, columns=col_list)
             return RET_OK, ret_frame

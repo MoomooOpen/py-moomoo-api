@@ -2,7 +2,7 @@
 
 import threading
 from collections import namedtuple
-from moomoo.common.utils import IS_PY2
+from .utils import IS_PY2
 
 if IS_PY2:
     import Queue as queue

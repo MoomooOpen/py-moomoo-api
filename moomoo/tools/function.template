@@ -35,7 +35,7 @@
     def pack_req(cls, {parameter}, conn_id):
 {pack_req_filter}
         # 开始组包
-        from futu.common.pb.{pb_file_name}_pb2 import Request
+        from ..common.pb.{pb_file_name}_pb2 import Request
         req = Request()
 {pack_req_add}
         return pack_pb_req(req, ProtoId.{pb_file_name}, conn_id)

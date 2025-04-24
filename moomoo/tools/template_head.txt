@@ -42,4 +42,4 @@ class FtEnum(object):
             return False, str(number_value) + " cannot be converted to SortField Type!"
 
 
-from futu.common.pb import Qot_Common_pb2
+from ..common.pb import Qot_Common_pb2

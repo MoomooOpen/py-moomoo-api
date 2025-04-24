@@ -42,7 +42,7 @@ if is_py2:
     install_requires.append("selectors2")
 
 setup(
-    name='moomoo-api',
+    name='moomoo_api',
     version=version,
     description='Moomoo Quantitative Trading API',
 	long_description=long_desc,

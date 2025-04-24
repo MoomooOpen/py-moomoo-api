@@ -2,9 +2,9 @@
 import os
 import sys
 import traceback
-from moomoo.common import bytes_utf8, IS_PY2, str_utf8
-from moomoo.common.constant import *
-from moomoo.common.ft_logger import logger
+from . import bytes_utf8, IS_PY2, str_utf8
+from .constant import *
+from .ft_logger import logger
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_pkcs1
 from Crypto import Random
@@ -243,7 +243,7 @@ class RsaCrypt(object):
 
 
 """
-test_str = 'moomoo api' * 32
+test_str = 'futu api' * 32
 dt_encrypt = RsaCrypt.encrypt(test_str)
 print(dt_encrypt)
 dt_decrypt = RsaCrypt.decrypt(dt_encrypt)
